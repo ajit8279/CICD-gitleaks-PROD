@@ -46,7 +46,7 @@ jobs:
     # Step 3: Upload scan report as artifact
     - name: Upload Gitleaks Report
       if: always()   # Runs even if scan fails → important for debugging
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: gitleaks-report
         path: gitleaks-report.json
