@@ -1,0 +1,59 @@
+name: Gitleaks Secret Scan
+
+# Trigger conditions
+on:
+  push:
+    branches: [ "main" ]   # Run scan on every push to main branch
+  pull_request:            # Also scan all PRs before merge
+  workflow_dispatch:       # Allow manual trigger from GitHub UI
+
+jobs:
+  gitleaks:
+    name: Detect Hardcoded Secrets
+    runs-on: ubuntu-latest  # GitHub-hosted runner
+
+    steps:
+    # Step 1: Checkout full repo history
+    - name: Checkout Code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0   # IMPORTANT → scans entire git history (not just latest commit)
+
+    # Step 2: Run Gitleaks scan
+    - name: Run Gitleaks Scan
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Required for PR comments / auth
+      with:
+        args: >
+          detect
+          --source .
+          --verbose
+          --redact
+          --exit-code 1
+          --report-format json
+          --report-path gitleaks-report.json
+
+        # Explanation:
+        # detect → scan repository
+        # --source . → scan current repo
+        # --verbose → detailed logs (useful for debugging/interviews)
+        # --redact → hides actual secret values in logs (security best practice)
+        # --exit-code 1 → FAIL pipeline if leaks found (CRITICAL DevSecOps behavior)
+        # --report-format json → structured output
+        # --report-path → save report file
+
+    # Step 3: Upload scan report as artifact
+    - name: Upload Gitleaks Report
+      if: always()   # Runs even if scan fails → important for debugging
+      uses: actions/upload-artifact@v3
+      with:
+        name: gitleaks-report
+        path: gitleaks-report.json
+
+    # Step 4 (Optional but STRONG): Fail job explicitly with message
+    - name: Fail if leaks detected
+      if: failure()
+      run: |
+        echo "❌ Secrets detected! Fix before merging."
+        exit 1
