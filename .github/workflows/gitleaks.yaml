@@ -20,11 +20,11 @@ jobs:
     # Step 2: Run Gitleaks scan using Docker (stable approach)
     - name: Run Gitleaks (Baseline Scan)
       run: |
-        docker run --rm \                         # Run container and remove after execution
-          -v ${{ github.workspace }}:/repo \      # Mount repo into container
-          zricethezav/gitleaks:latest detect \   # Run gitleaks detect command
-          --source /repo \                        # Scan the repository path
-          --exit-code 1                           # CRITICAL → fail pipeline if leaks are found
+         docker run --rm \
+           -v ${{ github.workspace }}:/repo \
+           zricethezav/gitleaks:latest detect \
+           --source /repo \
+           --exit-code 1
 
         # Explanation:
         # --source /repo → tells gitleaks where to scan
