@@ -1,43 +1,32 @@
-name: Gitleaks Scan
+name: Gitleaks Baseline  # Name of the workflow (visible in GitHub Actions UI)
 
+# Trigger conditions → when this pipeline should run
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-  workflow_dispatch:
+    branches: ["main"]        # Runs when code is pushed to main branch
+  pull_request:               # Runs on every PR (before merge)
 
 jobs:
   gitleaks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest    # GitHub runner (Linux VM)
 
     steps:
+    # Step 1: Checkout repository code
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        fetch-depth: 0        # IMPORTANT → scans full git history (not just latest commit)
 
-    # Install Gitleaks manually
-    - name: Install Gitleaks
+    # Step 2: Run Gitleaks scan using Docker (stable approach)
+    - name: Run Gitleaks (Baseline Scan)
       run: |
-        wget https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -O gitleaks
-        chmod +x gitleaks
-        sudo mv gitleaks /usr/local/bin/
+        docker run --rm \                         # Run container and remove after execution
+          -v ${{ github.workspace }}:/repo \      # Mount repo into container
+          zricethezav/gitleaks:latest detect \   # Run gitleaks detect command
+          --source /repo \                        # Scan the repository path
+          --exit-code 1                           # CRITICAL → fail pipeline if leaks are found
 
-    # Run scan with enforcement
-    - name: Run Gitleaks Scan
-      run: |
-        gitleaks detect \
-          --source . \
-          --verbose \
-          --redact \
-          --report-format json \
-          --report-path gitleaks-report.json \
-          --exit-code 1
-
-    # Upload report (even if failed)
-    - name: Upload Report
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: gitleaks-report
-        path: gitleaks-report.json
+        # Explanation:
+        # --source /repo → tells gitleaks where to scan
+        # --exit-code 1 → enforces security gate (pipeline fails on detection)
+        # docker → avoids dependency/version issues in CI
