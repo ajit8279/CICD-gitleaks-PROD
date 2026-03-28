@@ -1,32 +1,14 @@
-name: Gitleaks Baseline  # Name of the workflow (visible in GitHub Actions UI)
-
-# Trigger conditions → when this pipeline should run
-on:
-  push:
-    branches: ["main"]        # Runs when code is pushed to main branch
-  pull_request:               # Runs on every PR (before merge)
-
+name: gitleaks
+on: [pull_request, push, workflow_dispatch]
 jobs:
-  gitleaks:
-    runs-on: ubuntu-latest    # GitHub runner (Linux VM)
-
+  scan:
+    name: gitleaks
+    runs-on: ubuntu-latest
     steps:
-    # Step 1: Checkout repository code
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0        # IMPORTANT → scans full git history (not just latest commit)
-
-    # Step 2: Run Gitleaks scan using Docker (stable approach)
-    - name: Run Gitleaks (Baseline Scan)
-      run: |
-         docker run --rm \
-           -v ${{ github.workspace }}:/repo \
-           zricethezav/gitleaks:latest detect \
-           --source /repo \
-           --exit-code 1
-
-        # Explanation:
-        # --source /repo → tells gitleaks where to scan
-        # --exit-code 1 → enforces security gate (pipeline fails on detection)
-        # docker → avoids dependency/version issues in CI
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE}} # Only required for Organizations, not personal accounts.
