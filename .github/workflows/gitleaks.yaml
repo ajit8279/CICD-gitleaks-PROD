@@ -7,11 +7,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout full repo (needed for history scan)
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # 2. Gitleaks Scan (FAIL FAST)
       - name: Run Gitleaks Scan (Enforced)
         run: |
           docker run --rm \
@@ -20,3 +22,18 @@ jobs:
             --source /repo \
             --verbose \
             --exit-code 1
+
+      # 3. Build Docker Image (runs ONLY if Gitleaks passes)
+      - name: Build Docker Image
+        run: |
+          docker build -t fintech-app -f docker/Dockerfile .
+
+      # 4. Trivy Scan (FAIL on HIGH/CRITICAL vulnerabilities)
+      - name: Scan Docker Image with Trivy
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            fintech-app
